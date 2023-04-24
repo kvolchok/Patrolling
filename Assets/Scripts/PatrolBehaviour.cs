@@ -12,9 +12,12 @@ public class PatrolBehaviour : MonoBehaviour
     [SerializeField]
     private float _waitingTimeAtPoint;
     
-    private Vector3 _targetPosition;
     private Vector3 _offset;
-    private int _pointIndex;
+    private Vector3 _startPosition;
+    private Vector3 _targetPosition;
+    
+    private int _targetPointIndex = -1;
+    private float _travelTime;
     private float _currentTime;
 
     private void Awake()
@@ -25,50 +28,42 @@ public class PatrolBehaviour : MonoBehaviour
 
     private void Start()
     {
-        if (_points.Count != 0)
-        {
-            _targetPosition = _points[_pointIndex].position;
-        }
+        SetNextTargetPoint();
+        CalculateTravelTime();
     }
 
     private void Update()
     {
-        if (_currentTime > _waitingTimeAtPoint)
+        _currentTime += Time.deltaTime;
+        
+        MoveToTargetPoint();
+        
+        if (_currentTime > _travelTime + _waitingTimeAtPoint)
         {
-            MoveToNextPoint();
-        }
-        else
-        {
-            _currentTime += Time.deltaTime;
-        }
-    }
-
-    private void MoveToNextPoint()
-    {
-        var currentPosition = transform.position;
-        var distance = Vector3.Distance(currentPosition, _targetPosition);
-        var travelTime = distance / _unitSpeed;
-        var progress = 1 / travelTime;
-
-        var newPosition = Vector3.Lerp(currentPosition, _targetPosition + _offset, progress);
-        transform.position = newPosition;
-
-        if (IsUnitOnTargetPosition())
-        {
+            SetNextTargetPoint();
+            CalculateTravelTime();
             _currentTime = 0;
-            
-            if (_pointIndex == _points.Count)
-            {
-                _pointIndex = 0;
-            }
-            
-            _targetPosition = _points[_pointIndex].position;
-            _pointIndex++;
         }
     }
 
-    private bool IsUnitOnTargetPosition()
+    private void SetNextTargetPoint()
     {
-        return transform.position == _targetPosition + _offset;
+        _targetPointIndex = (_targetPointIndex + 1) % _points.Count; 
+        
+        _startPosition = transform.position;
+        _targetPosition = _points[_targetPointIndex].position + _offset;
+    }
+
+    private void CalculateTravelTime()
+    {
+        var distance = Vector3.Distance(_startPosition, _targetPosition);
+        _travelTime = distance / _unitSpeed;
+    }
+
+    private void MoveToTargetPoint()
+    {
+        var progress = _currentTime / _travelTime;
+        var newPosition = Vector3.Lerp(_startPosition, _targetPosition, progress);
+        transform.position = newPosition;
     }
 }
